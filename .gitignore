@@ -1,0 +1,27 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE/Editor specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Build artifacts (if you use any preprocessors or build tools)
+/dist/
+/build/
+/node_modules/ # If you use npm/yarn for CSS frameworks or tools
+
+# Temporary files
+*.log
+*.tmp
+*.swp
+*~
+
+# Sass/Less/Stylus generated CSS (if you compile CSS)
+# Example: If your source is in 'scss' and output to 'css'
+/css/*.css
+!/css/style.css # Example: if you want to keep a specific compiled CSS file
