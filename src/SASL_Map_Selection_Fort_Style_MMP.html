@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Original 1st edition SASL file by Steve P. Inman -->
+<!-- Modified by Don Lazov 8/7/2025 -->
+<!-- Updated to use the 2nd edition SASL tables, updated to use the double wide "Fort" maps 1a/b through 22a/b -->
+<!-- Also added North/South Map alignment -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SASL Map Selection Utility "Fort" Style - MMP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        select,
+        button {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .reroll-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .reroll-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>SASL Map Selection Utility "Fort" Style - MMP</h1>
+
+        <label for="board-count">Select Number of Boards:</label>
+        <select id="board-count">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+        </select>
+
+        <label for="terrain-category">Select Terrain Category:</label>
+        <select id="terrain-category"></select>
+
+        <label for="drm">Terrain Selection Dice Roll Modifier (DRM):</label>
+        <select id="drm">
+            <option value="-2">-2</option>
+            <option value="-1">-1</option>
+            <option value="0" selected>0</option>
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+        </select>
+
+        <label for="drm2">Mapboard Number Selection Dice Roll Modifier (DRM):</label>
+        <select id="drm2">
+            <option value="-2">-2</option>
+            <option value="-1">-1</option>
+            <option value="0" selected>0</option>
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+        </select>
+
+        <button onclick="generateTerrain()">Generate Terrain</button>
+
+        <table id="results">
+            <thead>
+                <tr>
+                    <th>Board</th>
+                    <th>Terrain Type</th>
+                    <th>Mapboard #</th>
+                    <th>Map Alignment</th>
+                    <th>Reroll Mapboard #</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const TableA8 = `<?xml version="1.0" encoding="UTF-8"?>
+<TerrainSelection>
+  <Column name="Standard A8a">
+    <Row minRoll="2" maxRoll="2" terrainType="City"/>
+    <Row minRoll="3" maxRoll="5" terrainType="Village"/>
+    <Row minRoll="6" maxRoll="7" terrainType="Farmland"/>
+    <Row minRoll="8" maxRoll="9" terrainType="Rural"/>
+    <Row minRoll="10" maxRoll="12" terrainType="Hills"/>
+  </Column>
+  <Column name="Urban A8b">
+    <Row minRoll="2" maxRoll="5" terrainType="City"/>
+    <Row minRoll="6" maxRoll="12" terrainType="Village"/>
+  </Column>
+  <Column name="Country A8c">
+    <Row minRoll="2" maxRoll="6" terrainType="Farmland"/>
+    <Row minRoll="7" maxRoll="9" terrainType="Rural"/>
+    <Row minRoll="10" maxRoll="12" terrainType="Hills"/>
+  </Column>
+  <Column name="Country A8d">
+	<Row minRoll="2" maxRoll="5" terrainType="Village"/>
+    <Row minRoll="6" maxRoll="8" terrainType="Rural"/>
+	<Row minRoll="9" maxRoll="12" terrainType="Farmland"/>
+  </Column>
+  <Column name="Country A8e">
+	<Row minRoll="2" maxRoll="4" terrainType="Village"/>
+    <Row minRoll="5" maxRoll="7" terrainType="Farmland"/>
+    <Row minRoll="8" maxRoll="9" terrainType="Rural"/>
+    <Row minRoll="10" maxRoll="12" terrainType="Hills"/>
+  </Column>
+  <!-- Add other columns as needed -->
+</TerrainSelection>
+    `;
+
+        const TableA9 = `<?xml version="1.0" encoding="UTF-8"?>
+<MapboardSelection>
+  <Column name="City">
+    <Row roll="1" MapboardNumber="12a/b"/>
+    <Row roll="2" MapboardNumber="13a/b"/>
+    <Row roll="3" MapboardNumber="16a/b"/>
+    <Row roll="4" MapboardNumber="17a/b"/>
+    <Row roll="5" MapboardNumber="18a/b"/>
+    <Row roll="6" MapboardNumber="19a/b"/>
+    <Row roll="7" MapboardNumber="22a/b"/>
+    <Row roll="8" MapboardNumber="12a/b"/>
+    <Row roll="9" MapboardNumber="13a/b"/>
+    <Row roll="10" MapboardNumber="16a/b"/>
+    <Row roll="11" MapboardNumber="17a/b"/>
+    <Row roll="12" MapboardNumber="18a/b"/>
+    <Row roll="13" MapboardNumber="19a/b"/>
+    <Row roll="14" MapboardNumber="22a/b (river)"/>
+    <Row roll="15" MapboardNumber="12a/b"/>
+  </Column>
+  <Column name="Village">
+    <Row roll="1" MapboardNumber="1a/b"/>
+    <Row roll="2" MapboardNumber="2a/b"/>
+    <Row roll="3" MapboardNumber="3a/b (river)"/>
+    <Row roll="4" MapboardNumber="4a/b"/>
+    <Row roll="5" MapboardNumber="5a/b"/>
+    <Row roll="6" MapboardNumber="6a/b (river)"/>
+    <Row roll="7" MapboardNumber="7a/b"/>
+    <Row roll="8" MapboardNumber="8a/b"/>
+    <Row roll="9" MapboardNumber="10a/b"/>
+    <Row roll="10" MapboardNumber="11a/b"/>
+    <Row roll="11" MapboardNumber="12a/b"/>
+    <Row roll="12" MapboardNumber="13a/b"/>
+    <Row roll="13" MapboardNumber="14a/b"/>
+    <Row roll="14" MapboardNumber="15a/b"/>
+    <Row roll="15" MapboardNumber="20a/b (river)"/>
+  </Column>
+  <Column name="Farmland">
+    <Row roll="1" MapboardNumber="1a/b"/>
+    <Row roll="2" MapboardNumber="4a/b"/>
+    <Row roll="3" MapboardNumber="9a/b"/>
+    <Row roll="4" MapboardNumber="11a/b"/>
+    <Row roll="5" MapboardNumber="14a/b"/>
+    <Row roll="6" MapboardNumber="15a/b"/>
+    <Row roll="7" MapboardNumber="20a/b (river)"/>
+    <Row roll="8" MapboardNumber="21a/b"/>
+    <Row roll="9" MapboardNumber="1a/b"/>
+    <Row roll="10" MapboardNumber="4a/b"/>
+    <Row roll="11" MapboardNumber="9a/b"/>
+    <Row roll="12" MapboardNumber="11a/b"/>
+    <Row roll="13" MapboardNumber="14a/b"/>
+    <Row roll="14" MapboardNumber="15a/b"/>
+    <Row roll="15" MapboardNumber="20a/b (river)"/>
+  </Column>
+  <Column name="Rural">
+    <Row roll="1" MapboardNumber="1a/b"/>
+    <Row roll="2" MapboardNumber="7a/b"/>
+    <Row roll="3" MapboardNumber="8a/b"/>
+    <Row roll="4" MapboardNumber="9a/b"/>
+    <Row roll="5" MapboardNumber="11a/b"/>
+    <Row roll="6" MapboardNumber="14a/b"/>
+    <Row roll="7" MapboardNumber="20a/b (river)"/>
+    <Row roll="8" MapboardNumber="21a/b"/>
+    <Row roll="9" MapboardNumber="1a/b"/>
+    <Row roll="10" MapboardNumber="7a/b"/>
+    <Row roll="11" MapboardNumber="8a/b"/>
+    <Row roll="12" MapboardNumber="9a/b"/>
+    <Row roll="13" MapboardNumber="11a/b"/>
+    <Row roll="14" MapboardNumber="20a/b (river)"/>
+    <Row roll="15" MapboardNumber="21a/b"/>
+  </Column>
+  <Column name="Hills">
+    <Row roll="1" MapboardNumber="2a/b"/>
+    <Row roll="2" MapboardNumber="4a/b"/>
+    <Row roll="3" MapboardNumber="5a/b"/>
+    <Row roll="4" MapboardNumber="7a/b"/>
+    <Row roll="5" MapboardNumber="8a/b"/>
+    <Row roll="6" MapboardNumber="10a/b"/>
+    <Row roll="7" MapboardNumber="13a/b"/>
+    <Row roll="8" MapboardNumber="15a/b"/>
+    <Row roll="9" MapboardNumber="21a/b"/>
+    <Row roll="10" MapboardNumber="2a/b"/>
+    <Row roll="11" MapboardNumber="4a/b"/>
+    <Row roll="12" MapboardNumber="5a/b"/>
+    <Row roll="13" MapboardNumber="7a/b"/>
+    <Row roll="14" MapboardNumber="8a/b"/>
+    <Row roll="15" MapboardNumber="10a/b"/>
+  </Column> 
+</MapboardSelection>`;
+
+        let terrainData = [];
+
+        // Parse XML and populate dropdown
+        function parseXML() {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(TableA8, "text/xml");
+            const columns = xmlDoc.getElementsByTagName("Column");
+
+            const dropdown = document.getElementById("terrain-category");
+            for (const column of columns) {
+                const name = column.getAttribute("name");
+                const rows = Array.from(column.getElementsByTagName("Row")).map(row => ({
+                    minRoll: parseInt(row.getAttribute("minRoll")),
+                    maxRoll: parseInt(row.getAttribute("maxRoll")),
+                    terrainType: row.getAttribute("terrainType")
+                }));
+                terrainData.push({ name, rows });
+
+                const option = document.createElement("option");
+                option.value = name;
+                option.textContent = name;
+                dropdown.appendChild(option);
+            }
+        }
+
+        // Generate terrain for selected boards
+        function generateTerrain() {
+            const category = document.getElementById("terrain-category").value;
+            const boardCount = parseInt(document.getElementById("board-count").value);
+            const drm = parseInt(document.getElementById("drm").value);
+            const drm2 = parseInt(document.getElementById("drm2").value); // Mapboard DRM
+            const selectedCategory = terrainData.find(cat => cat.name === category);
+
+            if (!selectedCategory) {
+                alert("Please select a valid terrain category.");
+                return;
+            }
+
+            const resultsTable = document.getElementById("results").querySelector("tbody");
+            resultsTable.innerHTML = ""; // Clear previous results
+
+            for (let i = 1; i <= boardCount; i++) {
+                addBoardRow(i, selectedCategory, drm, drm2);
+            }
+        }
+
+
+        // Add a row to the results table
+
+
+        function addBoardRow(boardNumber, selectedCategory, drm, drm2) {
+            const roll = roll2D6() + drm;
+            const clampedRoll = Math.max(2, Math.min(roll, 12));
+            const terrain = selectedCategory.rows.find(row => clampedRoll >= row.minRoll && clampedRoll <= row.maxRoll);
+            const terrainType = terrain ? terrain.terrainType : "Unknown";
+
+            // For mapboard selection, we need to roll a d15 (or simulate it with appropriate dice)
+            const mapboardRoll = rollD15() + drm2;
+            const clampedRoll2 = Math.max(1, Math.min(mapboardRoll, 15));
+            const mapboardNumber = terrainType !== "Unknown" ? getMapboardNumber(TableA9, terrainType, clampedRoll2) : "Unknown";
+
+            // Roll for map alignment
+            const mapAlignment = getMapAlignment();
+
+            // Add the row to the table
+            const resultsTable = document.getElementById("results").querySelector("tbody");
+            const row = resultsTable.insertRow();
+            row.insertCell(0).textContent = boardNumber;
+            row.insertCell(1).textContent = terrainType;
+            row.insertCell(2).textContent = mapboardNumber;
+            row.insertCell(3).textContent = mapAlignment;
+
+            // Add reroll button
+            const rerollCell = row.insertCell(4);
+            const rerollButton = document.createElement("button");
+            rerollButton.textContent = "Reroll Mapboard #";
+            rerollButton.className = "reroll-btn";
+            rerollButton.onclick = function () {
+                reroll(this, boardNumber, selectedCategory.name, drm2);
+            };
+            rerollCell.appendChild(rerollButton);
+        }
+
+        // Reroll for a specific row
+        function reroll(button, boardNumber, categoryName, drm2) {
+            // Fetch the row where the reroll is happening
+            const row = button.parentElement.parentElement;
+
+            // Fetch the current terrain type from the row
+            const terrainType = row.cells[1].textContent;
+
+            if (terrainType === "Unknown") {
+                alert("Cannot reroll for an unknown terrain type.");
+                return;
+            }
+
+            // Perform the mapboard roll using drm2 with d15
+            const roll2 = rollD15() + drm2;
+            const clampedRoll2 = Math.max(1, Math.min(roll2, 15));
+
+            // Lookup the mapboard number for the current terrain type
+            const mapboardNumber = getMapboardNumber(TableA9, terrainType, clampedRoll2);
+
+            // Roll for new map alignment
+            const mapAlignment = getMapAlignment();
+
+            // Update the mapboard number and map alignment in the table
+            row.cells[2].textContent = mapboardNumber;
+            row.cells[3].textContent = mapAlignment;
+        }
+
+        // Get mapboard number based on terrain type and roll
+        function getMapboardNumber(xmlData, terrainType, roll) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+            const column = Array.from(xmlDoc.getElementsByTagName("Column")).find(col => col.getAttribute("name") === terrainType);
+
+            if (!column) return "Unknown";
+
+            const row = Array.from(column.getElementsByTagName("Row")).find(r => parseInt(r.getAttribute("roll")) === roll);
+
+            return row ? row.getAttribute("MapboardNumber") : "Unknown";
+        }
+
+        // Roll 2D6
+        function roll2D6() {
+            return Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 2;
+        }
+
+        // Simulate a D15 roll (1-15)
+        function rollD15() {
+            return Math.floor(Math.random() * 15) + 1;
+        }
+
+        // Get random map alignment
+        function getMapAlignment() {
+            const alignments = ["North", "South"];
+            return alignments[Math.floor(Math.random() * alignments.length)];
+        }
+
+        // Initialize
+        parseXML();
+    </script>
+</body>
+
+</html>

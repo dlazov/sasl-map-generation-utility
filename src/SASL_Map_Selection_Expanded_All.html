@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Original 1st edition SASL file by Steve P. Inman -->
+<!-- Modified by Don Lazov 8/7/2025 -->
+<!-- Updated to use the 2nd edition SASL tables, updated to use all the geo maps from MMP, BFP, LFT, Friendly Fire, and Hazmat. -->
+<!-- Also added North/South Map alignment -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SASL Geo Map Selection Utility - All</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        select,
+        button {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .reroll-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .reroll-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>SASL Geo Map Selection Utility - All</h1>
+
+        <label for="board-count">Select Number of Boards:</label>
+        <select id="board-count">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+        </select>
+
+        <label for="terrain-category">Select Terrain Category:</label>
+        <select id="terrain-category"></select>
+
+        <label for="drm">Terrain Selection Dice Roll Modifier (DRM):</label>
+        <select id="drm">
+            <option value="-2">-2</option>
+            <option value="-1">-1</option>
+            <option value="0" selected>0</option>
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+        </select>
+
+        <label for="drm2">Mapboard Number Selection Dice Roll Modifier (DRM):</label>
+        <select id="drm2">
+            <option value="-2">-2</option>
+            <option value="-1">-1</option>
+            <option value="0" selected>0</option>
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+        </select>
+
+        <button onclick="generateTerrain()">Generate Terrain</button>
+
+        <table id="results">
+            <thead>
+                <tr>
+                    <th>Board</th>
+                    <th>Terrain Type</th>
+                    <th>Mapboard #</th>
+                    <th>Map Alignment</th>
+                    <th>Reroll Mapboard #</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const TableA8 = `<?xml version="1.0" encoding="UTF-8"?>
+<TerrainSelection>
+  <Column name="Standard A8a">
+    <Row minRoll="2" maxRoll="2" terrainType="City"/>
+    <Row minRoll="3" maxRoll="5" terrainType="Village"/>
+    <Row minRoll="6" maxRoll="7" terrainType="Farmland"/>
+    <Row minRoll="8" maxRoll="9" terrainType="Rural"/>
+    <Row minRoll="10" maxRoll="12" terrainType="Hills"/>
+  </Column>
+  <Column name="Urban A8b">
+    <Row minRoll="2" maxRoll="5" terrainType="City"/>
+    <Row minRoll="6" maxRoll="12" terrainType="Village"/>
+  </Column>
+  <Column name="Country A8c">
+    <Row minRoll="2" maxRoll="6" terrainType="Farmland"/>
+    <Row minRoll="7" maxRoll="9" terrainType="Rural"/>
+    <Row minRoll="10" maxRoll="12" terrainType="Hills"/>
+  </Column>
+  <Column name="Country A8d">
+    <Row minRoll="2" maxRoll="5" terrainType="Village"/>
+    <Row minRoll="6" maxRoll="8" terrainType="Rural"/>
+    <Row minRoll="9" maxRoll="12" terrainType="Farmland"/>
+  </Column>
+  <Column name="Country A8e">
+    <Row minRoll="2" maxRoll="4" terrainType="Village"/>
+    <Row minRoll="5" maxRoll="7" terrainType="Farmland"/>
+    <Row minRoll="8" maxRoll="9" terrainType="Rural"/>
+    <Row minRoll="10" maxRoll="12" terrainType="Hills"/>
+  </Column>
+</TerrainSelection>`;
+
+        const TableA9 = `<?xml version="1.0" encoding="UTF-8"?>
+<MapboardSelection>
+  <Column name="City">
+    <Row roll="1" MapboardNumber="1"/>
+    <Row roll="2" MapboardNumber="20"/>
+    <Row roll="3" MapboardNumber="21"/>
+    <Row roll="4" MapboardNumber="22"/>
+    <Row roll="5" MapboardNumber="23 (river)"/>
+    <Row roll="6" MapboardNumber="45"/>
+    <Row roll="7" MapboardNumber="49"/>
+    <Row roll="8" MapboardNumber="51"/>
+    <Row roll="9" MapboardNumber="60"/>
+    <Row roll="10" MapboardNumber="64 (mates with 65)"/>
+    <Row roll="11" MapboardNumber="65 (mates with 64)"/>
+    <Row roll="12" MapboardNumber="68"/>
+    <Row roll="13" MapboardNumber="76"/>
+    <Row roll="14" MapboardNumber="92"/>
+    <Row roll="15" MapboardNumber="j"/>
+    <Row roll="16" MapboardNumber="k"/>
+    <Row roll="17" MapboardNumber="r"/>
+    <Row roll="18" MapboardNumber="s"/>
+    <Row roll="19" MapboardNumber="y"/>
+    <Row roll="20" MapboardNumber="z"/>
+    <Row roll="21" MapboardNumber="BFP-A"/>
+    <Row roll="22" MapboardNumber="BFP-B"/>
+    <Row roll="23" MapboardNumber="BFP-G (river)"/>
+    <Row roll="24" MapboardNumber="BFP-DW1a (mates with 1b)"/>
+    <Row roll="25" MapboardNumber="BFP-DW1b (mates with 1a)"/>
+    <Row roll="26" MapboardNumber="1"/>
+    <Row roll="27" MapboardNumber="20"/>
+    <Row roll="28" MapboardNumber="21"/>
+    <Row roll="29" MapboardNumber="22"/>
+    <Row roll="30" MapboardNumber="23 (river)"/>
+    <Row roll="31" MapboardNumber="45"/>
+    <Row roll="32" MapboardNumber="49"/>
+    <Row roll="33" MapboardNumber="51"/>
+    <Row roll="34" MapboardNumber="60"/>
+    <Row roll="35" MapboardNumber="64 (mates with 65)"/>
+    <Row roll="36" MapboardNumber="65 (mates with 64)"/>
+    <Row roll="37" MapboardNumber="68"/>
+    <Row roll="38" MapboardNumber="76"/>
+    <Row roll="39" MapboardNumber="92"/>
+    <Row roll="40" MapboardNumber="j"/>
+    <Row roll="41" MapboardNumber="k"/>
+    <Row roll="42" MapboardNumber="r"/>
+    <Row roll="43" MapboardNumber="s"/>
+    <Row roll="44" MapboardNumber="y"/>
+    <Row roll="45" MapboardNumber="z"/>
+    <Row roll="46" MapboardNumber="BFP-A"/>
+    <Row roll="47" MapboardNumber="BFP-B"/>
+    <Row roll="48" MapboardNumber="BFP-G (river)"/>
+    <Row roll="49" MapboardNumber="BFP-DW1a (mates with 1b)"/>
+    <Row roll="50" MapboardNumber="BFP-DW1b (mates with 1a)"/>
+    <Row roll="51" MapboardNumber="1"/>
+    <Row roll="52" MapboardNumber="20"/>
+    <Row roll="53" MapboardNumber="21"/>
+    <Row roll="54" MapboardNumber="22"/>
+    <Row roll="55" MapboardNumber="j"/>
+    <Row roll="56" MapboardNumber="k"/>
+    <Row roll="57" MapboardNumber="r"/>
+    <Row roll="58" MapboardNumber="s"/>
+    <Row roll="59" MapboardNumber="y"/>
+    <Row roll="60" MapboardNumber="z"/>
+  </Column>
+  <Column name="Village">
+    <Row roll="1" MapboardNumber="3"/>
+    <Row roll="2" MapboardNumber="8 (river)"/>
+    <Row roll="3" MapboardNumber="10"/>
+    <Row roll="4" MapboardNumber="10z"/>
+    <Row roll="5" MapboardNumber="12"/>
+    <Row roll="6" MapboardNumber="17"/>
+    <Row roll="7" MapboardNumber="17z"/>
+    <Row roll="8" MapboardNumber="24"/>
+    <Row roll="9" MapboardNumber="41"/>
+    <Row roll="10" MapboardNumber="42"/>
+    <Row roll="11" MapboardNumber="43"/>
+    <Row roll="12" MapboardNumber="46"/>
+    <Row roll="13" MapboardNumber="48"/>
+    <Row roll="14" MapboardNumber="49"/>
+    <Row roll="15" MapboardNumber="53"/>
+    <Row roll="16" MapboardNumber="56"/>
+    <Row roll="17" MapboardNumber="57"/>
+    <Row roll="18" MapboardNumber="59"/>
+    <Row roll="19" MapboardNumber="60"/>
+    <Row roll="20" MapboardNumber="62"/>
+    <Row roll="21" MapboardNumber="63"/>
+    <Row roll="22" MapboardNumber="64 (mates with 65)"/>
+    <Row roll="23" MapboardNumber="65 (mates with 64)"/>
+    <Row roll="24" MapboardNumber="66"/>
+    <Row roll="25" MapboardNumber="67"/>
+    <Row roll="26" MapboardNumber="68"/>
+    <Row roll="27" MapboardNumber="70"/>
+    <Row roll="28" MapboardNumber="71"/>
+    <Row roll="29" MapboardNumber="76"/>
+    <Row roll="30" MapboardNumber="79 (river)"/>
+    <Row roll="31" MapboardNumber="86"/>
+    <Row roll="32" MapboardNumber="89"/>
+    <Row roll="33" MapboardNumber="92"/>
+    <Row roll="34" MapboardNumber="g"/>
+    <Row roll="35" MapboardNumber="i"/>
+    <Row roll="36" MapboardNumber="m"/>
+    <Row roll="37" MapboardNumber="p"/>
+    <Row roll="38" MapboardNumber="q"/>
+    <Row roll="39" MapboardNumber="r"/>
+    <Row roll="40" MapboardNumber="s"/>
+    <Row roll="41" MapboardNumber="u"/>
+    <Row roll="42" MapboardNumber="w"/>
+    <Row roll="43" MapboardNumber="y"/>
+    <Row roll="44" MapboardNumber="z"/>
+    <Row roll="45" MapboardNumber="BFP-C"/>
+    <Row roll="46" MapboardNumber="BFP-G (river)"/>
+    <Row roll="47" MapboardNumber="BFP-J"/>
+    <Row roll="48" MapboardNumber="BFP-K"/>
+    <Row roll="49" MapboardNumber="BFP-L"/>
+    <Row roll="50" MapboardNumber="BFP-Q"/>
+    <Row roll="51" MapboardNumber="BFP-S"/>
+    <Row roll="52" MapboardNumber="FrFA"/>
+    <Row roll="53" MapboardNumber="Hz2"/>
+    <Row roll="54" MapboardNumber="BFPGS1"/>
+    <Row roll="55" MapboardNumber="BFPGS3"/>
+    <Row roll="56" MapboardNumber="86"/>
+    <Row roll="57" MapboardNumber="89"/>
+    <Row roll="58" MapboardNumber="92"/>
+    <Row roll="59" MapboardNumber="g"/>
+    <Row roll="60" MapboardNumber="i"/>
+  </Column>
+  <Column name="Farmland">
+    <Row roll="1" MapboardNumber="4"/>
+    <Row roll="2" MapboardNumber="6"/>
+    <Row roll="3" MapboardNumber="7 (river)"/>
+    <Row roll="4" MapboardNumber="11"/>
+    <Row roll="5" MapboardNumber="13"/>
+    <Row roll="6" MapboardNumber="14"/>
+    <Row roll="7" MapboardNumber="16"/>
+    <Row roll="8" MapboardNumber="17"/>
+    <Row roll="9" MapboardNumber="17z"/>
+    <Row roll="10" MapboardNumber="19"/>
+    <Row roll="11" MapboardNumber="33"/>
+    <Row roll="12" MapboardNumber="35"/>
+    <Row roll="13" MapboardNumber="38"/>
+    <Row roll="14" MapboardNumber="40 (river)"/>
+    <Row roll="15" MapboardNumber="42"/>
+    <Row roll="16" MapboardNumber="43"/>
+    <Row roll="17" MapboardNumber="44"/>
+    <Row roll="18" MapboardNumber="46"/>
+    <Row roll="19" MapboardNumber="48"/>
+    <Row roll="20" MapboardNumber="53"/>
+    <Row roll="21" MapboardNumber="54"/>
+    <Row roll="22" MapboardNumber="56"/>
+    <Row roll="23" MapboardNumber="57"/>
+    <Row roll="24" MapboardNumber="59"/>
+    <Row roll="25" MapboardNumber="62"/>
+    <Row roll="26" MapboardNumber="63"/>
+    <Row roll="27" MapboardNumber="66"/>
+    <Row roll="28" MapboardNumber="69"/>
+    <Row roll="29" MapboardNumber="70"/>
+    <Row roll="30" MapboardNumber="71"/>
+    <Row roll="31" MapboardNumber="72"/>
+    <Row roll="32" MapboardNumber="73"/>
+    <Row roll="33" MapboardNumber="85"/>
+    <Row roll="34" MapboardNumber="89"/>
+    <Row roll="35" MapboardNumber="90"/>
+    <Row roll="36" MapboardNumber="g"/>
+    <Row roll="37" MapboardNumber="h"/>
+    <Row roll="38" MapboardNumber="i"/>
+    <Row roll="39" MapboardNumber="l"/>
+    <Row roll="40" MapboardNumber="m"/>
+    <Row roll="41" MapboardNumber="p"/>
+    <Row roll="42" MapboardNumber="t"/>
+    <Row roll="43" MapboardNumber="v"/>
+    <Row roll="44" MapboardNumber="x"/>
+    <Row roll="45" MapboardNumber="y"/>
+    <Row roll="46" MapboardNumber="BFP-C"/>
+    <Row roll="47" MapboardNumber="BFP-D"/>
+    <Row roll="48" MapboardNumber="BFP-E"/>
+    <Row roll="49" MapboardNumber="BFP-F"/>
+    <Row roll="50" MapboardNumber="BFP-L"/>
+    <Row roll="51" MapboardNumber="BFP-M"/>
+    <Row roll="52" MapboardNumber="BFP-N"/>
+    <Row roll="53" MapboardNumber="BFP-Q"/>
+    <Row roll="54" MapboardNumber="BFP-R"/>
+    <Row roll="55" MapboardNumber="BFP-S"/>
+    <Row roll="56" MapboardNumber="FrFa"/>
+    <Row roll="57" MapboardNumber="Hz1"/>
+    <Row roll="58" MapboardNumber="Hz2"/>
+    <Row roll="59" MapboardNumber="BFPGS1"/>
+    <Row roll="60" MapboardNumber="FrFa"/>
+  </Column>
+  <Column name="Rural">
+    <Row roll="1" MapboardNumber="4"/>
+    <Row roll="2" MapboardNumber="5"/>
+    <Row roll="3" MapboardNumber="7 (river)"/>
+    <Row roll="4" MapboardNumber="11"/>
+    <Row roll="5" MapboardNumber="13"/>
+    <Row roll="6" MapboardNumber="14"/>
+    <Row roll="7" MapboardNumber="16"/>
+    <Row roll="8" MapboardNumber="17"/>
+    <Row roll="9" MapboardNumber="18"/>
+    <Row roll="10" MapboardNumber="19"/>
+    <Row roll="11" MapboardNumber="32"/>
+    <Row roll="12" MapboardNumber="33"/>
+    <Row roll="13" MapboardNumber="34"/>
+    <Row roll="14" MapboardNumber="35"/>
+    <Row roll="15" MapboardNumber="36"/>
+    <Row roll="16" MapboardNumber="37"/>
+    <Row roll="17" MapboardNumber="38"/>
+    <Row roll="18" MapboardNumber="40 (river)"/>
+    <Row roll="19" MapboardNumber="42"/>
+    <Row roll="20" MapboardNumber="43"/>
+    <Row roll="21" MapboardNumber="44"/>
+    <Row roll="22" MapboardNumber="47"/>
+    <Row roll="23" MapboardNumber="50"/>
+    <Row roll="24" MapboardNumber="52"/>
+    <Row roll="25" MapboardNumber="54"/>
+    <Row roll="26" MapboardNumber="55"/>
+    <Row roll="27" MapboardNumber="61"/>
+    <Row roll="28" MapboardNumber="62"/>
+    <Row roll="29" MapboardNumber="66"/>
+    <Row roll="30" MapboardNumber="69"/>
+    <Row roll="31" MapboardNumber="70"/>
+    <Row roll="32" MapboardNumber="72"/>
+    <Row roll="33" MapboardNumber="73"/>
+    <Row roll="34" MapboardNumber="74"/>
+    <Row roll="35" MapboardNumber="75"/>
+    <Row roll="36" MapboardNumber="77"/>
+    <Row roll="37" MapboardNumber="84"/>
+    <Row roll="38" MapboardNumber="85"/>
+    <Row roll="39" MapboardNumber="90"/>
+    <Row roll="40" MapboardNumber="91"/>
+    <Row roll="41" MapboardNumber="93"/>
+    <Row roll="42" MapboardNumber="h"/>
+    <Row roll="43" MapboardNumber="l"/>
+    <Row roll="44" MapboardNumber="n"/>
+    <Row roll="45" MapboardNumber="o"/>
+    <Row roll="46" MapboardNumber="t"/>
+    <Row roll="47" MapboardNumber="u"/>
+    <Row roll="48" MapboardNumber="x"/>
+    <Row roll="49" MapboardNumber="BFP-D"/>
+    <Row roll="50" MapboardNumber="BFP-E"/>
+    <Row roll="51" MapboardNumber="BFP-F"/>
+    <Row roll="52" MapboardNumber="BFP-M"/>
+    <Row roll="53" MapboardNumber="BFP-N"/>
+    <Row roll="54" MapboardNumber="BFP-O (river)"/>
+    <Row roll="55" MapboardNumber="BFP-P"/>
+    <Row roll="56" MapboardNumber="BFP-R"/>
+    <Row roll="57" MapboardNumber="BFP-T"/>
+    <Row roll="58" MapboardNumber="BFP-U"/>
+    <Row roll="59" MapboardNumber="FrFA"/>
+    <Row roll="60" MapboardNumber="Hz1"/>
+  </Column>
+  <Column name="Hills">
+    <Row roll="1" MapboardNumber="2"/>
+    <Row roll="2" MapboardNumber="3"/>
+    <Row roll="3" MapboardNumber="8 (river)"/>
+    <Row roll="4" MapboardNumber="9"/>
+    <Row roll="5" MapboardNumber="11"/>
+    <Row roll="6" MapboardNumber="15"/>
+    <Row roll="7" MapboardNumber="18"/>
+    <Row roll="8" MapboardNumber="25"/>
+    <Row roll="9" MapboardNumber="36"/>
+    <Row roll="10" MapboardNumber="39"/>
+    <Row roll="11" MapboardNumber="40 (river)"/>
+    <Row roll="12" MapboardNumber="41"/>
+    <Row roll="13" MapboardNumber="47"/>
+    <Row roll="14" MapboardNumber="50"/>
+    <Row roll="15" MapboardNumber="55"/>
+    <Row roll="16" MapboardNumber="58"/>
+    <Row roll="17" MapboardNumber="60"/>
+    <Row roll="18" MapboardNumber="61"/>
+    <Row roll="19" MapboardNumber="77"/>
+    <Row roll="20" MapboardNumber="78"/>
+    <Row roll="21" MapboardNumber="80 (h mates to 81)"/>
+    <Row roll="22" MapboardNumber="81 (h mates to 80)"/>
+    <Row roll="23" MapboardNumber="82 (h mates to 83)"/>
+    <Row roll="24" MapboardNumber="83 (h mates to 82)"/>
+    <Row roll="25" MapboardNumber="84"/>
+    <Row roll="26" MapboardNumber="86"/>
+    <Row roll="27" MapboardNumber="87 (h mates to 88)"/>
+    <Row roll="28" MapboardNumber="88 (h mates to 87)"/>
+    <Row roll="29" MapboardNumber="92"/>
+    <Row roll="30" MapboardNumber="h"/>
+    <Row roll="31" MapboardNumber="o"/>
+    <Row roll="32" MapboardNumber="p"/>
+    <Row roll="33" MapboardNumber="u"/>
+    <Row roll="34" MapboardNumber="v"/>
+    <Row roll="35" MapboardNumber="w"/>
+    <Row roll="36" MapboardNumber="BFP-E"/>
+    <Row roll="37" MapboardNumber="BFP-F"/>
+    <Row roll="38" MapboardNumber="BFP-H (mates with I)"/>
+    <Row roll="39" MapboardNumber="BFP-I (mates with H)"/>
+    <Row roll="40" MapboardNumber="BFP-J"/>
+    <Row roll="41" MapboardNumber="BFP-K"/>
+    <Row roll="42" MapboardNumber="BFP-M"/>
+    <Row roll="43" MapboardNumber="BFP-P"/>
+    <Row roll="44" MapboardNumber="BFP-T"/>
+    <Row roll="45" MapboardNumber="BFPGS1"/>
+    <Row roll="46" MapboardNumber="2"/>
+    <Row roll="47" MapboardNumber="3"/>
+    <Row roll="48" MapboardNumber="h"/>
+    <Row roll="49" MapboardNumber="o"/>
+    <Row roll="50" MapboardNumber="BFP-E"/>
+    <Row roll="51" MapboardNumber="BFP-F"/>
+    <Row roll="52" MapboardNumber="BFP-H (mates with I)"/>
+    <Row roll="53" MapboardNumber="BFP-I (mates with H)"/>
+    <Row roll="54" MapboardNumber="BFP-J"/>
+    <Row roll="55" MapboardNumber="BFP-K"/>
+    <Row roll="56" MapboardNumber="BFP-M"/>
+    <Row roll="57" MapboardNumber="BFP-P"/>
+    <Row roll="58" MapboardNumber="BFP-T"/>
+    <Row roll="59" MapboardNumber="BFPGS1"/>
+    <Row roll="60" MapboardNumber="p"/>
+  </Column>
+</MapboardSelection>`;
+
+        let terrainData = [];
+
+        // Parse XML and populate dropdown
+        function parseXML() {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(TableA8, "text/xml");
+            const columns = xmlDoc.getElementsByTagName("Column");
+
+            const dropdown = document.getElementById("terrain-category");
+            for (const column of columns) {
+                const name = column.getAttribute("name");
+                const rows = Array.from(column.getElementsByTagName("Row")).map(row => ({
+                    minRoll: parseInt(row.getAttribute("minRoll")),
+                    maxRoll: parseInt(row.getAttribute("maxRoll")),
+                    terrainType: row.getAttribute("terrainType")
+                }));
+                terrainData.push({ name, rows });
+
+                const option = document.createElement("option");
+                option.value = name;
+                option.textContent = name;
+                dropdown.appendChild(option);
+            }
+        }
+
+        // Generate terrain for selected boards
+        function generateTerrain() {
+            const category = document.getElementById("terrain-category").value;
+            const boardCount = parseInt(document.getElementById("board-count").value);
+            const drm = parseInt(document.getElementById("drm").value);
+            const drm2 = parseInt(document.getElementById("drm2").value);
+            const selectedCategory = terrainData.find(cat => cat.name === category);
+
+            if (!selectedCategory) {
+                alert("Please select a valid terrain category.");
+                return;
+            }
+
+            const resultsTable = document.getElementById("results").querySelector("tbody");
+            resultsTable.innerHTML = "";
+
+            for (let i = 1; i <= boardCount; i++) {
+                addBoardRow(i, selectedCategory, drm, drm2);
+            }
+        }
+
+        function addBoardRow(boardNumber, selectedCategory, drm, drm2) {
+            const roll = roll2D6() + drm;
+            const clampedRoll = Math.max(2, Math.min(roll, 12));
+            const terrain = selectedCategory.rows.find(row => clampedRoll >= row.minRoll && clampedRoll <= row.maxRoll);
+            const terrainType = terrain ? terrain.terrainType : "Unknown";
+
+            const mapboardRoll = rollD60() + drm2;
+            const clampedRoll2 = Math.max(1, Math.min(mapboardRoll, 60));
+            const mapboardNumber = terrainType !== "Unknown"
+                ? getMapboardNumber(TableA9, terrainType, clampedRoll2)
+                : "N/A";
+
+            const mapAlignment = getMapAlignment();
+
+            const resultsTable = document.getElementById("results").querySelector("tbody");
+            const row = resultsTable.insertRow();
+
+            row.innerHTML = `
+            <td>${boardNumber}</td>
+            <td>${terrainType}</td>
+            <td>${mapboardNumber}</td>
+            <td>${mapAlignment}</td>
+            <td><button class="reroll-btn" onclick="reroll(this, ${boardNumber}, '${selectedCategory.name}', ${drm2})">Reroll</button></td>
+        `;
+        }
+
+        function reroll(button, boardNumber, categoryName, drm2) {
+            const row = button.parentElement.parentElement;
+            const terrainType = row.cells[1].textContent;
+
+            if (terrainType === "Unknown") {
+                alert("Cannot reroll for an unknown terrain type.");
+                return;
+            }
+
+            const roll2 = rollD60() + drm2;
+            const clampedRoll2 = Math.max(1, Math.min(roll2, 60));
+            const mapboardNumber = getMapboardNumber(TableA9, terrainType, clampedRoll2);
+            const mapAlignment = getMapAlignment();
+
+            row.cells[2].textContent = mapboardNumber;
+            row.cells[3].textContent = mapAlignment;
+        }
+
+        // Dice rolling functions
+        function roll2D6() {
+            return Math.floor(Math.random() * 6 + 1) + Math.floor(Math.random() * 6 + 1);
+        }
+
+        function rollD6() {
+            return Math.floor(Math.random() * 6) + 1;
+        }
+
+        function rollD60() {
+            return Math.floor(Math.random() * 60) + 1;
+        }
+
+        function getMapAlignment() {
+            const roll = rollD6();
+            return roll <= 3 ? "North" : "South";
+        }
+
+        function getMapboardNumber(xmlString, columnName, roll) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+
+            const column = xmlDoc.querySelector(`Column[name="${columnName}"]`);
+            if (!column) {
+                throw new Error(`Column with name "${columnName}" not found.`);
+            }
+
+            const row = column.querySelector(`Row[roll="${roll}"]`);
+            if (!row) {
+                throw new Error(`Row with roll "${roll}" not found in column "${columnName}".`);
+            }
+
+            return row.getAttribute("MapboardNumber");
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            parseXML();
+        });
+    </script>
+</body>
+
+</html>
