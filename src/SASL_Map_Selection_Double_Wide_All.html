@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <!-- Original 1st edition SASL file by Steve P. Inman -->
-<!-- Modified by Don Lazov 8/7/2025 -->
+<!-- Modified by Don Lazov 8/8/2025 -->
 <!-- Updated to use the 2nd edition SASL tables, updated to use the double wide maps from both MMP and BFP -->
 <!-- Also added North/South Map alignment -->
 <head>
@@ -17,6 +17,11 @@
         }
 
         h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        h2 {
             text-align: center;
             color: #333;
         }
@@ -83,12 +88,70 @@
         .reroll-btn:hover {
             background-color: #218838;
         }
+
+        .river-text {
+            color: #003366;
+            font-weight: bold;
+        }
+
+        .mated-board {
+            font-weight: bold;
+        }
+
+        .dw-indicator {
+            color: #666666;
+            font-weight: bold;
+            font-style: italic;
+            margin-left: 4px;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .filter-section h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .checkbox-label {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 5px;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>SASL Map Selection Utility Double Wide - MMP & BFP</h1>
+        <h1>SASL Map Selection Utility</h1>
+        <h2>Double Wide - MMP & BFP</h2>
+
+        <div class="filter-section">
+            <h3>Map Filters:</h3>
+            <label class="checkbox-label">
+                <input type="checkbox" id="include-bfp" checked>
+                <span class="checkmark"></span>
+                BFP
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="include-dw" checked>
+                <span class="checkmark"></span>
+                DW
+            </label>
+        </div>
 
         <label for="board-count">Select Number of Boards:</label>
         <select id="board-count">
@@ -258,8 +321,8 @@
     <Row roll="6" MapboardNumber="BFP-DW4b (mates with 4a)"/>
     <Row roll="7" MapboardNumber="BFP-DW5a (mates with 5b) buildings Wooden"/>
     <Row roll="8" MapboardNumber="BFP-DW5b (mates with 5a) buildings Wooden"/>
-    <Row roll="9" MapboardNumber="BFP-DW6b (mates with 6a)"/>
-    <Row roll="10" MapboardNumber="BFP-DW6a (mates with 6b)"/>
+    <Row roll="9" MapboardNumber="BFP-DW6a (mates with 6b)"/>
+    <Row roll="10" MapboardNumber="BFP-DW6b (mates with 6a)"/>
     <Row roll="11" MapboardNumber="BFP-DW9a (mates with 9b)"/>
     <Row roll="12" MapboardNumber="BFP-DW9b (mates with 9a)"/>
     <Row roll="13" MapboardNumber="BFP-DW2a (mates with 2b)"/>
@@ -340,8 +403,16 @@
             const resultsTable = document.getElementById("results").querySelector("tbody");
             resultsTable.innerHTML = ""; // Clear previous results
 
-            for (let i = 1; i <= boardCount; i++) {
-                addBoardRow(i, selectedCategory, drm, drm2);
+            let currentBoardNumber = 1;
+            let boardsAdded = 0;
+            
+            while (boardsAdded < boardCount) {
+                const initialRowCount = resultsTable.rows.length;
+                addBoardRow(currentBoardNumber, selectedCategory, drm, drm2);
+                const rowsAdded = resultsTable.rows.length - initialRowCount;
+                
+                boardsAdded += rowsAdded;
+                currentBoardNumber += rowsAdded;
             }
         }
 
@@ -358,28 +429,181 @@
             // For mapboard selection, we need to roll a d22 (or simulate it with appropriate dice)
             const mapboardRoll = rollD22() + drm2;
             const clampedRoll2 = Math.max(1, Math.min(mapboardRoll, 22));
-            const mapboardNumber = terrainType !== "Unknown" ? getMapboardNumber(TableA9, terrainType, clampedRoll2) : "Unknown";
+            let mapboardNumber = terrainType !== "Unknown" ? getMapboardNumber(TableA9, terrainType, clampedRoll2) : "Unknown";
 
-            // Roll for map alignment
-            const mapAlignment = getMapAlignment();
+            // Apply filters
+            const includeBFP = document.getElementById("include-bfp").checked;
+            const includeDW = document.getElementById("include-dw").checked;
+            
+            if (!includeBFP && mapboardNumber.startsWith("BFP-")) {
+                // If BFP is unchecked and we got a BFP board, reroll
+                return addBoard(boardNumber);
+            }
+            
+            if (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to"))) {
+                // If DW is unchecked and we got a mated board, reroll
+                return addBoard(boardNumber);
+            }
 
-            // Add the row to the table
+            // Check if this mapboard has a mate and get the mate's mapboard number
+            let mateMapboardNumber = null;
+            let isSpecialMatedPair = false;
+            let firstBoard = null;
+            let secondBoard = null;
+            
+            if (mapboardNumber !== "Unknown" && mapboardNumber !== "N/A" && (mapboardNumber.includes("(mates to ") || mapboardNumber.includes("(mates with "))) {
+                const mateMatch = mapboardNumber.match(/\(mates (?:to|with) (\w+)\)/);
+                if (mateMatch) {
+                    const currentBoard = mapboardNumber.split(' ')[0];
+                    const mateNumber = mateMatch[1];
+                    
+                    // Check for special mated pairs with specific ordering
+                    const specialPairs = {
+                        '64': '65', '65': '64',
+                        '81': '80', '80': '81', 
+                        '83': '82', '82': '83',
+                        '87': '88', '88': '87',
+                        'BFP-DW1a': 'BFP-DW1b', 'BFP-DW1b': 'BFP-DW1a',
+                        'BFP-DW2a': 'BFP-DW2b', 'BFP-DW2b': 'BFP-DW2a',
+                        'BFP-DW3a': 'BFP-DW3b', 'BFP-DW3b': 'BFP-DW3a',
+                        'BFP-DW4a': 'BFP-DW4b', 'BFP-DW4b': 'BFP-DW4a',
+                        'BFP-DW5a': 'BFP-DW5b', 'BFP-DW5b': 'BFP-DW5a',
+                        'BFP-DW6a': 'BFP-DW6b', 'BFP-DW6b': 'BFP-DW6a',
+                        'BFP-DW7a': 'BFP-DW7b', 'BFP-DW7b': 'BFP-DW7a',
+                        'BFP-DW8a': 'BFP-DW8b', 'BFP-DW8b': 'BFP-DW8a',
+                        'BFP-DW9a': 'BFP-DW9b', 'BFP-DW9b': 'BFP-DW9a',
+                        'BFP-DW10a': 'BFP-DW10b', 'BFP-DW10b': 'BFP-DW10a',
+                        'BFP-H': 'BFP-I', 'BFP-I': 'BFP-H'
+                    };
+                    
+                    if (specialPairs[currentBoard] || specialPairs[mateNumber]) {
+                        isSpecialMatedPair = true;
+                        // Determine the correct ordering
+                        if (['64', '81', '83', '87'].includes(currentBoard)) {
+                            firstBoard = `${currentBoard} (mates with ${specialPairs[currentBoard]})`;
+                            secondBoard = `${specialPairs[currentBoard]} (mates with ${currentBoard})`;
+                        } else if (['65', '80', '82', '88'].includes(currentBoard)) {
+                            firstBoard = `${specialPairs[currentBoard]} (mates with ${currentBoard})`;
+                            secondBoard = `${currentBoard} (mates with ${specialPairs[currentBoard]})`;
+                        } else if (['64', '81', '83', '87'].includes(mateNumber)) {
+                            firstBoard = `${mateNumber} (mates with ${specialPairs[mateNumber]})`;
+                            secondBoard = `${specialPairs[mateNumber]} (mates with ${mateNumber})`;
+                        } else if (currentBoard.includes('BFP-DW') && currentBoard.endsWith('a')) {
+                            // BFP-DW 'a' boards come first
+                            firstBoard = `${currentBoard} (mates with ${specialPairs[currentBoard]})`;
+                            secondBoard = `${specialPairs[currentBoard]} (mates with ${currentBoard})`;
+                        } else if (currentBoard.includes('BFP-DW') && currentBoard.endsWith('b')) {
+                            // BFP-DW 'b' boards come second
+                            firstBoard = `${specialPairs[currentBoard]} (mates with ${currentBoard})`;
+                            secondBoard = `${currentBoard} (mates with ${specialPairs[currentBoard]})`;
+                        } else if (mateNumber.includes('BFP-DW') && mateNumber.endsWith('a')) {
+                            // BFP-DW 'a' boards come first
+                            firstBoard = `${mateNumber} (mates with ${specialPairs[mateNumber]})`;
+                            secondBoard = `${specialPairs[mateNumber]} (mates with ${mateNumber})`;
+                        } else if (mateNumber.includes('BFP-DW') && mateNumber.endsWith('b')) {
+                            // BFP-DW 'b' boards come second
+                            firstBoard = `${specialPairs[mateNumber]} (mates with ${mateNumber})`;
+                            secondBoard = `${mateNumber} (mates with ${specialPairs[mateNumber]})`;
+                        } else if (currentBoard === 'BFP-H') {
+                            // BFP-H comes first
+                            firstBoard = `${currentBoard} (mates with ${specialPairs[currentBoard]})`;
+                            secondBoard = `${specialPairs[currentBoard]} (mates with ${currentBoard})`;
+                        } else if (currentBoard === 'BFP-I') {
+                            // BFP-I comes second
+                            firstBoard = `${specialPairs[currentBoard]} (mates with ${currentBoard})`;
+                            secondBoard = `${currentBoard} (mates with ${specialPairs[currentBoard]})`;
+                        } else if (mateNumber === 'BFP-H') {
+                            // BFP-H comes first
+                            firstBoard = `${mateNumber} (mates with ${specialPairs[mateNumber]})`;
+                            secondBoard = `${specialPairs[mateNumber]} (mates with ${mateNumber})`;
+                        } else if (mateNumber === 'BFP-I') {
+                            // BFP-I comes second
+                            firstBoard = `${specialPairs[mateNumber]} (mates with ${mateNumber})`;
+                            secondBoard = `${mateNumber} (mates with ${specialPairs[mateNumber]})`;
+                        } else {
+                            firstBoard = `${specialPairs[mateNumber]} (mates with ${mateNumber})`;
+                            secondBoard = `${mateNumber} (mates with ${specialPairs[mateNumber]})`;
+                        }
+                    } else {
+                        // Regular mate pair processing
+                        mateMapboardNumber = `${mateNumber} (mates ${mapboardNumber.includes("to") ? "to" : "with"} ${currentBoard})`;
+                    }
+                }
+            }
+
+            // Roll for map alignment (or set to South for special pairs)
+            const mapAlignment = isSpecialMatedPair ? "South" : getMapAlignment();
+
             const resultsTable = document.getElementById("results").querySelector("tbody");
-            const row = resultsTable.insertRow();
-            row.insertCell(0).textContent = boardNumber;
-            row.insertCell(1).textContent = terrainType;
-            row.insertCell(2).textContent = mapboardNumber;
-            row.insertCell(3).textContent = mapAlignment;
+            
+            if (isSpecialMatedPair) {
+                // Add the first board of the special pair
+                const row1 = resultsTable.insertRow();
+                row1.insertCell(0).textContent = boardNumber;
+                row1.insertCell(1).textContent = terrainType;
+                row1.insertCell(2).innerHTML = formatMapboardNumber(firstBoard);
+                row1.insertCell(3).textContent = "South";
+                
+                const rerollCell1 = row1.insertCell(4);
+                const rerollButton1 = document.createElement("button");
+                rerollButton1.textContent = "Reroll Mapboard #";
+                rerollButton1.className = "reroll-btn";
+                rerollButton1.onclick = function () {
+                    reroll(this, boardNumber, selectedCategory.name, drm2);
+                };
+                rerollCell1.appendChild(rerollButton1);
+                
+                // Add the second board of the special pair
+                const row2 = resultsTable.insertRow();
+                row2.insertCell(0).textContent = boardNumber + 1;
+                row2.insertCell(1).textContent = terrainType;
+                row2.insertCell(2).innerHTML = formatMapboardNumber(secondBoard);
+                row2.insertCell(3).textContent = "South";
+                
+                const rerollCell2 = row2.insertCell(4);
+                const rerollButton2 = document.createElement("button");
+                rerollButton2.textContent = "Reroll Mapboard #";
+                rerollButton2.className = "reroll-btn";
+                rerollButton2.onclick = function () {
+                    reroll(this, boardNumber + 1, selectedCategory.name, drm2);
+                };
+                rerollCell2.appendChild(rerollButton2);
+            } else {
+                // Regular board processing
+                const row = resultsTable.insertRow();
+                row.insertCell(0).textContent = boardNumber;
+                row.insertCell(1).textContent = terrainType;
+                row.insertCell(2).innerHTML = formatMapboardNumber(mapboardNumber);
+                row.insertCell(3).textContent = mapAlignment;
 
-            // Add reroll button
-            const rerollCell = row.insertCell(4);
-            const rerollButton = document.createElement("button");
-            rerollButton.textContent = "Reroll Mapboard #";
-            rerollButton.className = "reroll-btn";
-            rerollButton.onclick = function () {
-                reroll(this, boardNumber, selectedCategory.name, drm2);
-            };
-            rerollCell.appendChild(rerollButton);
+                const rerollCell = row.insertCell(4);
+                const rerollButton = document.createElement("button");
+                rerollButton.textContent = "Reroll Mapboard #";
+                rerollButton.className = "reroll-btn";
+                rerollButton.onclick = function () {
+                    reroll(this, boardNumber, selectedCategory.name, drm2);
+                };
+                rerollCell.appendChild(rerollButton);
+
+                // If there's a regular mate mapboard, automatically add it as the next board
+                if (mateMapboardNumber) {
+                    const mateAlignment = getMapAlignment();
+                    const mateRow = resultsTable.insertRow();
+                    mateRow.insertCell(0).textContent = boardNumber + 1;
+                    mateRow.insertCell(1).textContent = terrainType;
+                    mateRow.insertCell(2).innerHTML = formatMapboardNumber(mateMapboardNumber);
+                    mateRow.insertCell(3).textContent = mateAlignment;
+                    
+                    const mateRerollCell = mateRow.insertCell(4);
+                    const mateRerollButton = document.createElement("button");
+                    mateRerollButton.textContent = "Reroll Mapboard #";
+                    mateRerollButton.className = "reroll-btn";
+                    mateRerollButton.onclick = function () {
+                        reroll(this, boardNumber + 1, selectedCategory.name, drm2);
+                    };
+                    mateRerollCell.appendChild(mateRerollButton);
+                }
+            }
         }
 
         // Reroll for a specific row
@@ -406,7 +630,7 @@
             const mapAlignment = getMapAlignment();
 
             // Update the mapboard number and map alignment in the table
-            row.cells[2].textContent = mapboardNumber;
+            row.cells[2].innerHTML = formatMapboardNumber(mapboardNumber);
             row.cells[3].textContent = mapAlignment;
         }
 
@@ -428,16 +652,6 @@
             return Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 2;
         }
 
-        // Simulate a D15 roll (1-15)
-        function rollD15() {
-            return Math.floor(Math.random() * 15) + 1;
-        }
-
-        // Simulate a D20 roll (1-20)
-        function rollD20() {
-            return Math.floor(Math.random() * 20) + 1;
-        }
-
         // Simulate a D22 roll (1-22)
         function rollD22() {
             return Math.floor(Math.random() * 22) + 1;
@@ -447,6 +661,39 @@
         function getMapAlignment() {
             const alignments = ["North", "South"];
             return alignments[Math.floor(Math.random() * alignments.length)];
+        }
+
+        function formatMapboardNumber(mapboardNumber) {
+            let formattedText = mapboardNumber;
+            let cssClasses = [];
+            
+            // Check for river boards
+            if (mapboardNumber.includes("(river)")) {
+                cssClasses.push("river-text");
+            }
+            
+            // Check for mated boards
+            if (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to")) {
+                cssClasses.push("mated-board");
+                
+                // Extract the board name (everything before the parentheses)
+                const boardName = mapboardNumber.split(' (')[0];
+                
+                // Apply styling and add DW indicator, but don't include the mate info text
+                if (cssClasses.length > 0) {
+                    formattedText = `<span class="${cssClasses.join(' ')}">${boardName}</span><span class="dw-indicator">DW</span>`;
+                } else {
+                    formattedText = `<span class="mated-board">${boardName}</span><span class="dw-indicator">DW</span>`;
+                }
+                return formattedText;
+            }
+            
+            // Apply river styling if needed
+            if (cssClasses.length > 0) {
+                formattedText = `<span class="${cssClasses.join(' ')}">${mapboardNumber}</span>`;
+            }
+            
+            return formattedText;
         }
 
         // Initialize
