@@ -432,18 +432,17 @@
             const clampedRoll2 = Math.max(1, Math.min(mapboardRoll, 22));
             let mapboardNumber = terrainType !== "Unknown" ? getMapboardNumber(TableA9, terrainType, clampedRoll2) : "Unknown";
 
-            // Apply filters
+            // Apply filters - if we hit a filtered board, reroll until we get an acceptable one
             const includeBFP = document.getElementById("include-bfp").checked;
             const includeDW = document.getElementById("include-dw").checked;
             
-            if (!includeBFP && mapboardNumber.startsWith("BFP-")) {
-                // If BFP is unchecked and we got a BFP board, reroll
-                return addBoard(boardNumber);
-            }
+            // Check if this mapboard should be filtered out
+            const shouldFilter = (!includeBFP && mapboardNumber.startsWith("BFP-")) ||
+                               (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to")));
             
-            if (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to"))) {
-                // If DW is unchecked and we got a mated board, reroll
-                return addBoard(boardNumber);
+            if (shouldFilter) {
+                // If this board should be filtered, reroll until we get an acceptable one
+                return addBoardRow(boardNumber, selectedCategory, drm, drm2);
             }
 
             // Check if this mapboard has a mate and get the mate's mapboard number

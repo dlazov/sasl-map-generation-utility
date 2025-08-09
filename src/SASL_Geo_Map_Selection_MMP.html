@@ -561,18 +561,17 @@
         ? getMapboardNumber(TableA9, terrainType, clampedRoll2)
         : "N/A";
 
-      // Apply filters
+      // Apply filters - if we hit a filtered board, reroll until we get an acceptable one
       const includeDW = document.getElementById("include-dw").checked;
       const includeRivers = document.getElementById("include-rivers").checked;
       
-      if (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to"))) {
-        // If DW is unchecked and we got a mated board, reroll
-        return addBoard(boardNumber);
-      }
+      // Check if this mapboard should be filtered out
+      const shouldFilter = (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to"))) ||
+                         (!includeRivers && mapboardNumber.includes("(river)"));
       
-      if (!includeRivers && mapboardNumber.includes("(river)")) {
-        // If Rivers is unchecked and we got a river board, reroll
-        return addBoard(boardNumber);
+      if (shouldFilter) {
+        // If this board should be filtered, reroll until we get an acceptable one
+        return addBoardRow(boardNumber, selectedCategory, drm, drm2);
       }
 
       // Check if this mapboard has a mate and get the mate's mapboard number

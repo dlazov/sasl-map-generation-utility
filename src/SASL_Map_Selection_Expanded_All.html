@@ -742,35 +742,22 @@
                 ? getMapboardNumber(TableA9, terrainType, clampedRoll2)
                 : "N/A";
 
-            // Apply filters
+            // Apply filters - if we hit a filtered board, reroll until we get an acceptable one
             const includeBFP = document.getElementById("include-bfp").checked;
             const includeFrF = document.getElementById("include-frf").checked;
             const includeHaz = document.getElementById("include-haz").checked;
             const includeDW = document.getElementById("include-dw").checked;
             const includeRivers = document.getElementById("include-rivers").checked;
             
-            if (!includeBFP && mapboardNumber.startsWith("BFP-")) {
-                // If BFP is unchecked and we got a BFP board, reroll
-                return addBoardRow(boardNumber, selectedCategory, drm, drm2);
-            }
+            // Check if this mapboard should be filtered out
+            const shouldFilter = (!includeBFP && mapboardNumber.startsWith("BFP-")) ||
+                               (!includeFrF && mapboardNumber.includes("FrFA")) ||
+                               (!includeHaz && mapboardNumber.startsWith("Hz")) ||
+                               (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to"))) ||
+                               (!includeRivers && mapboardNumber.includes("(river)"));
             
-            if (!includeFrF && mapboardNumber.includes("FrFA")) {
-                // If FrF is unchecked and we got a FrFA board, reroll
-                return addBoardRow(boardNumber, selectedCategory, drm, drm2);
-            }
-            
-            if (!includeHaz && mapboardNumber.startsWith("Hz")) {
-                // If Haz is unchecked and we got a Hz board, reroll
-                return addBoardRow(boardNumber, selectedCategory, drm, drm2);
-            }
-            
-            if (!includeDW && (mapboardNumber.includes("(mates with") || mapboardNumber.includes("(mates to"))) {
-                // If DW is unchecked and we got a mated board, reroll
-                return addBoardRow(boardNumber, selectedCategory, drm, drm2);
-            }
-            
-            if (!includeRivers && mapboardNumber.includes("(river)")) {
-                // If Rivers is unchecked and we got a river board, reroll
+            if (shouldFilter) {
+                // If this board should be filtered, reroll until we get an acceptable one
                 return addBoardRow(boardNumber, selectedCategory, drm, drm2);
             }
 

@@ -1,6 +1,6 @@
 # SASL Map Generation Utility
 
-A comprehensive collection of web-based tools for generating random map selections for **Advanced Squad Leader (ASL) Solitaire (SASL)** board games. These utilities implement the official SASL tables and dice rolling mechanics to help players quickly generate appropriate maps for their scenarios.
+A comprehensive collection of web-based tools for generating random map selections for **Solitaire Advanced Squad Leader (SASL)** board games. These utilities implement the official SASL tables and dice rolling mechanics to help players quickly generate appropriate maps for their scenarios.
 
 ## 🎯 Overview
 
